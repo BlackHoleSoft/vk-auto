@@ -1,18 +1,40 @@
 package writer
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 type CarInfo struct {
 	Brand       string
 	Model       string
+	Year        int
+	Price       int
 	Description string
 	Photos      []string
 	Id          int
+}
+
+func WriteJson(cars []CarInfo) error {
+	path := fmt.Sprintf("cars/json/")
+
+	content, err := json.Marshal(cars)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(path, os.ModeDir); err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(path+"cars.json", []byte(content) /*os.ModeAppend*/, 0644); err != nil {
+		return err
+	}
+	return nil
 }
 
 func WriteInfo(car *CarInfo) error {
@@ -45,11 +67,12 @@ func WriteInfo(car *CarInfo) error {
 	if err := os.MkdirAll(path, os.ModeDir); err != nil {
 		return err
 	}
-	filename := fmt.Sprintf("/%s_%s_%v.html", brand, model, car.Id)
+	filename := fmt.Sprintf("/%s_%s_%v_%v_%v.html", brand, model, car.Year, car.Price, car.Id)
 	if err := os.WriteFile(path+filename, []byte(content.String()) /*os.ModeAppend*/, 0644); err != nil {
 		return err
 	}
 	fmt.Println("Write File: " + path + filename)
+
 	return nil
 }
 
@@ -100,6 +123,42 @@ func GetName(list []string, text string) string {
 		}
 	}
 	return "Other"
+}
+
+func GetYear(text string) int {
+	re := regexp.MustCompile(`\b\d{4}\b`)
+	matches := re.FindAll([]byte(strings.ToLower(text)), 10)
+	for _, m := range matches {
+		val, err := strconv.Atoi(string(m))
+		if err != nil {
+			continue
+		}
+		if val >= 1900 && val <= 2030 {
+			return val
+		}
+	}
+
+	return 0
+}
+
+func GetPrice(text string) int {
+	re := regexp.MustCompile(`(?i)(цена:?\s*\d+)|(\d+\s*к\b)|(\d+\s*₽)|(\d+\s*р)|(\d+\s*т\.?р)|(\d+\s*руб)`)
+	matches := re.FindAll([]byte(strings.ToLower(text)), 10)
+	for _, m := range matches {
+		mre := regexp.MustCompile(`\d+`)
+		val, err := strconv.Atoi(string(mre.Find(m)))
+		if err != nil {
+			continue
+		}
+		if val >= 10 && val < 1000 {
+			val = val * 1000
+		}
+		if val >= 10 {
+			return val
+		}
+	}
+
+	return 0
 }
 
 func Clear() error {

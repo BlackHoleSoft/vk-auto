@@ -10,7 +10,22 @@ import (
 func main() {
 	fmt.Println("Getting posts...")
 
-	result, err := vk.GetVkPublicPosts("-40867069")
+	postList := []string{
+		"-40867069",
+		"-101275644",
+		"-174283946",
+		"-124405175",
+	}
+
+	for _, p := range postList {
+		HandlePublic(p)
+	}
+
+	fmt.Println("Write success")
+}
+
+func HandlePublic(pub string) {
+	result, err := vk.GetVkPublicPosts(pub)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -18,6 +33,10 @@ func main() {
 	fmt.Println("Posts received")
 
 	cars := GetCars(result)
+	err = writer.WriteJson(cars)
+	if err != nil {
+		fmt.Println(err)
+	}
 	for _, c := range cars {
 		if c.Id == 0 {
 			continue
@@ -27,7 +46,6 @@ func main() {
 			fmt.Println(err)
 		}
 	}
-	fmt.Println("Write success")
 }
 
 func GetCars(posts []vk.VkPost) []writer.CarInfo {
@@ -42,6 +60,8 @@ func GetCars(posts []vk.VkPost) []writer.CarInfo {
 		if err != nil {
 			continue
 		}
+		year := writer.GetYear(p.Text)
+		price := writer.GetPrice(p.Text)
 		photos := make([]string, len(p.Attachments))
 		for i, a := range p.Attachments {
 			photos[i] = a.Photo.Photo_1280
@@ -55,6 +75,8 @@ func GetCars(posts []vk.VkPost) []writer.CarInfo {
 			Model:       model,
 			Description: p.Text,
 			Photos:      photos,
+			Year:        year,
+			Price:       price,
 		}
 	}
 	return cars
